@@ -1,0 +1,102 @@
+name: Check MEDIS master and publish DB
+
+on:
+  schedule:
+    # 毎週月曜 09:00 JST（00:00 UTC）。MEDIS は月末公開なので週 1 回で十分
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "state.json と同じ版でも再ビルドして公開する"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: drugmaster-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check latest dates on MEDIS sites
+        id: check
+        run: |
+          set -euo pipefail
+          latest=$(python3 scripts/drugmaster.py check)
+          echo "latest=$latest"
+          medhot=$(echo "$latest" | python3 -c 'import sys,json;print(json.load(sys.stdin)["medhot_date"])')
+          hot=$(echo "$latest" | python3 -c 'import sys,json;print(json.load(sys.stdin)["hot_date"])')
+          cur_medhot=$(python3 -c 'import json;print(json.load(open("state.json")).get("medhot_date",""))')
+          cur_hot=$(python3 -c 'import json;print(json.load(open("state.json")).get("hot_date",""))')
+          echo "medhot=$medhot" >> "$GITHUB_OUTPUT"
+          echo "hot=$hot" >> "$GITHUB_OUTPUT"
+          if [ "${{ inputs.force }}" = "true" ] || [ "$medhot" != "$cur_medhot" ] || [ "$hot" != "$cur_hot" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "New version detected: medhot $cur_medhot -> $medhot, hot $cur_hot -> $hot"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No change (medhot=$medhot, hot=$hot)"
+          fi
+
+      - name: Build SQLite
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          python3 scripts/drugmaster.py build --out dist \
+            --medhot-date "${{ steps.check.outputs.medhot }}" \
+            --hot-date "${{ steps.check.outputs.hot }}"
+          python3 scripts/drugmaster.py verify --db dist/drugmaster.sqlite
+
+      - name: Publish release and manifest
+        if: steps.check.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v${{ steps.check.outputs.medhot }}"
+          python3 scripts/make_manifest.py dist/build-info.json "$tag" > manifest.json
+          cat manifest.json
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/drugmaster.sqlite.gz dist/build-info.json --clobber
+          else
+            gh release create "$tag" dist/drugmaster.sqlite.gz dist/build-info.json \
+              --title "医薬品マスター ${{ steps.check.outputs.medhot }} 版" \
+              --notes "medhot ${{ steps.check.outputs.medhot }} / HOT ${{ steps.check.outputs.hot }}。$(python3 -c 'import json;d=json.load(open("dist/build-info.json"));print(f"records={d[\"record_count\"]} dispense={d[\"level_counts\"][\"dispense\"]} sales={d[\"level_counts\"][\"sales\"]} case={d[\"level_counts\"][\"case\"]}")')"
+          fi
+          python3 - <<'EOF'
+          import json
+          json.dump({"medhot_date": "${{ steps.check.outputs.medhot }}", "hot_date": "${{ steps.check.outputs.hot }}"},
+                    open("state.json", "w"), ensure_ascii=False, indent=2)
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state.json manifest.json
+          git commit -m "Publish drug master ${{ steps.check.outputs.medhot }} (HOT ${{ steps.check.outputs.hot }})"
+          git push
+
+      - name: Open issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="マスター更新ジョブが失敗しました ($(date -u +%Y-%m-%d))"
+          body="ワークフロー実行: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          MEDIS サイトの構造変更、ダウンロード失敗、列数不一致、件数の急減などが考えられます。ログを確認してください。"
+          existing=$(gh issue list --state open --search "マスター更新ジョブが失敗しました" --json number -q '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body" --label "pipeline-failure" || gh issue create --title "$title" --body "$body"
+          fi
