@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "source_date": "20260831",
+  "medhot_date": "20260831",
+  "hot_date": "20260831",
+  "built_at": "2026-09-27T04:07:46Z",
+  "record_count": 129261,
+  "level_counts": {
+    "dispense": 41889,
+    "sales": 55490,
+    "case": 31882
+  },
+  "db_url": "https://github.com/Myuta7/doublecheckun-drugmaster/releases/download/v20260831/drugmaster.sqlite.gz",
+  "db_gz_bytes": 3371072,
+  "db_bytes": 26279936,
+  "sha256_gz": "221b010f77641d0e1354aa60c68c24a47b1a87c31a777e5804bff1e46319535f",
+  "sha256_db": "7676684c536fd87e05ff3e9f5888669321f858149b070b67ac6e68b4db92025f",
+  "attribution": "医薬品HOTコードマスターは、厚生労働省の委託を受けて、一般財団法人医療情報システム開発センターにより作成されたものである。"
+}
