@@ -1,19 +1,19 @@
 {
   "schema_version": 1,
-  "source_date": "20260831",
-  "medhot_date": "20260831",
-  "hot_date": "20260831",
-  "built_at": "2026-09-27T04:07:46Z",
-  "record_count": 129261,
+  "source_date": "20260930",
+  "medhot_date": "20260930",
+  "hot_date": "20260930",
+  "built_at": "2026-10-12T05:35:17Z",
+  "record_count": 129395,
   "level_counts": {
-    "dispense": 41889,
-    "sales": 55490,
-    "case": 31882
+    "dispense": 41924,
+    "sales": 55539,
+    "case": 31932
   },
-  "db_url": "https://github.com/Myuta7/doublecheckun-drugmaster/releases/download/v20260831/drugmaster.sqlite.gz",
-  "db_gz_bytes": 3371072,
-  "db_bytes": 26279936,
-  "sha256_gz": "221b010f77641d0e1354aa60c68c24a47b1a87c31a777e5804bff1e46319535f",
-  "sha256_db": "7676684c536fd87e05ff3e9f5888669321f858149b070b67ac6e68b4db92025f",
+  "db_url": "https://github.com/Myuta7/doublecheckun-drugmaster/releases/download/v20260930/drugmaster.sqlite.gz",
+  "db_gz_bytes": 3374049,
+  "db_bytes": 26300416,
+  "sha256_gz": "9124826a0233a59198d4d955852562827de728bdc413f5dfc157f0234860a856",
+  "sha256_db": "0c74a29e91b39b75c6ba69064134e83b2c21a8db5f9491519940da071c10bc8e",
   "attribution": "医薬品HOTコードマスターは、厚生労働省の委託を受けて、一般財団法人医療情報システム開発センターにより作成されたものである。"
 }
